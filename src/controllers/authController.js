@@ -4,11 +4,16 @@ const User = require('../models/User');
 // Register new user
 exports.register = async (req, res) => {
   try {
-    const { nickname, gender, age, isFirstTime } = req.body;
+    const { nickname, password, gender, age, isFirstTime } = req.body;
 
     // Validate nickname
     if (!nickname || nickname.length < 3 || nickname.length > 20) {
       return res.status(400).json({ message: 'Nickname must be between 3 and 20 characters' });
+    }
+
+    // Validate password
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
     }
 
     // Check if nickname already exists
@@ -20,6 +25,7 @@ exports.register = async (req, res) => {
     // Create new user
     const user = new User({
       nickname: nickname.toLowerCase(),
+      password,
       gender,
       age,
       isFirstTime: isFirstTime !== undefined ? isFirstTime : true,
@@ -51,12 +57,23 @@ exports.register = async (req, res) => {
 // Login user
 exports.login = async (req, res) => {
   try {
-    const { nickname } = req.body;
+    const { nickname, password } = req.body;
+
+    // Validate input
+    if (!nickname || !password) {
+      return res.status(400).json({ message: 'Please provide nickname and password' });
+    }
 
     // Find user
     const user = await User.findOne({ nickname: nickname.toLowerCase() });
     if (!user) {
-      return res.status(401).json({ message: 'Nickname not found' });
+      return res.status(401).json({ message: 'Invalid nickname or password' });
+    }
+
+    // Check password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid nickname or password' });
     }
 
     // Generate token
